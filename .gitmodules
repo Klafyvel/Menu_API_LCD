@@ -1,0 +1,3 @@
+[submodule "src/Listuino"]
+	path = src/Listuino
+	url = https://github.com/Klafyvel/Listuino
