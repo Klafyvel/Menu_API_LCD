@@ -1,185 +1,129 @@
 #include "menu.h"
 
-Menu::Menu(char titre[], LiquidCrystal* lcd, char bp_haut, char bp_bas, char bp_ok)
+Menu::Menu(char title[], LiquidCrystal* lcd, uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok)
 {
-    this->nombreItem = 0; 
-    this->premier = NULL; 
-    this->lcd = lcd;
-    this->lcd->noBlink();
-    this->lcd->noCursor();
-    this->bp_ok = bp_ok;
-    this->bp_haut = bp_haut;
-    this->bp_bas = bp_bas;
-    this->last_item = 0;
+    _lcd = lcd;
+    _lcd->noBlink();
+    _lcd->noCursor();
+    _pb_ok = pb_ok;
+    _pb_up = pb_up;
+    _pb_down = pb_down;
+    _last_item = 0;
 
-    if(strlen(titre) <= 100){strcpy(this->titre, titre);}
+    if(strlen(title) <= MAX_LABEL_LONG){strcpy(_title, title);}
 }
-int Menu::addItem(callback fonction, const char nom[])
+
+bool Menu::addItem(callback function, const char name[])
 {
     Item* item = new Item;
-    return item!= NULL && Menu_newItem(item, fonction, nom) && Menu::addItem(item);
+    if (item == NULL || strlen(name)>=MAX_LABEL_LONG)
+        return false;
+    item->is_submenu = false;
+    item->content.function = function;
+    strcpy(item->label, name);
+    
+    _items.append(item);
+
+    return true;
 }
-int Menu::addSubMenu(Menu* submenu, const char nom[])
+bool Menu::addSubMenu(Menu* submenu, const char name[])
 {
     Item* item = new Item;
-    return item!= NULL && Menu_newItemSubMenu(item, submenu, nom) && Menu::addItem(item);
-}
-int Menu::addItem(Item* item) 
-{
-    if(this->nombreItem==0){this->premier = item;}
-    else
-    {
-        Item* buffer = NULL;
-        buffer=this->premier;
-        if(buffer == NULL)
-            return 0;
-        while(buffer->suivant){buffer = buffer->suivant;}
-        buffer->suivant = item;
-    }
-    this->nombreItem ++;
+    if (item == NULL || strlen(name)>=MAX_LABEL_LONG)
+        return false;
+    item->is_submenu = true;
+    item->content.submenu = submenu;
+    strcpy(item->label, name);
 
-    return 1;
+    _items.append(item);
+
+    return true;
 }
 
-int Menu::removeItemByLabel(const char nom[])
+void Menu::removeItemByLabel(const char name[])
 {
-    Item* item = this->premier;
-    while(strcmp(item->suivant->label, nom)) 
-    {
-        item = item->suivant;
+    int index = 0;
+    for(ListElement<Item*>* i = _items.get(0); i != 0; i=i->getNext()){
+        if (!strcmp(i->getValue()->label, name))
+            _items.removeValue(index);
+        index ++;
     }
-    delete item->suivant;
-    item->suivant = item->suivant->suivant; 
-    this->nombreItem --; 
-    return 1;
 }
 
-int Menu::removeItemById(int id) 
+void Menu::removeItemById(int id) 
 {
-    if((id < 0)||(id >= this->nombreItem)) 
-    {
-        return 0; 
-    }
-    else 
-    {
-
-        int i; 
-       Item* item = this->premier; 
-        for(i = 1; i<id; i++) 
-        {
-            item = item->suivant;
-        }
-        delete item->suivant;
-        item->suivant = item->suivant->suivant; 
-        this->nombreItem --; 
-    }
-    return 1;
+    _items.removeValue(id);
 }
 
 Menu::~Menu() 
 {
-    Item* buffer = this->premier;
-    do
-    {
-        this->premier = buffer->suivant;
-        delete buffer;
-        buffer = this->premier;
-    }while(buffer != NULL);
+    _items.~List();
 }
-void Menu::print(char current)
+void Menu::print(uint8_t current)
 {
-    this->lcd->clear();
-    this->lcd->print(this->titre);
-    this->lcd->print(" :");
-    int i= 0;
-    Item* item = this->premier;
-    this->lcd->setCursor(0,1);
-    if(current<this->nombreItem) {
-        for(i=0; i<current; i++)
-            item = item->suivant;
-        this->lcd->print(item->label);
+    _lcd->clear();
+    _lcd->print(_title);
+    _lcd->print(" :");
+
+    _lcd->setCursor(0,1);
+
+    if (current <= _items.getLength()) {
+        Item* item = _items.getValue(current);
+        _lcd->print(item->label);
     }
-    else {
-        this->lcd->print("Quitter");
-    }
+    else
+        _lcd->print("Exit");
 }
 
 int Menu::choose() 
 {
-    unsigned int choix = this->nombreItem+1; 
-    int current = this->last_item;
-    while((choix < 0) || (choix > this->nombreItem))
+    int choice = _last_item;
+    bool running = true;
+    int length = _items.getLength();
+
+    while(running)
     {
+        Menu::print(choice);
         bool event = false;
-        Menu::print(current);
         while(!event) {
-            if(digitalRead(this->bp_bas)==LOW) { current ++;event = true;}
-            if(digitalRead(this->bp_haut)==LOW) { current --;event = true;}
-            if(digitalRead(this->bp_ok)==LOW) { choix = current;event = true;}
-            current = (this->nombreItem + 1 + current)%(this->nombreItem+1);
+            if(digitalRead(_pb_down)==LOW) { choice ++;event = true;}
+            if(digitalRead(_pb_up)==LOW) { choice --;event = true;}
+            if(digitalRead(_pb_ok)==LOW) { event = true;running = false;}
+            choice = (choice)%(length+1);
         }
         delay(200);
     }
-    if(choix==this->nombreItem) 
+    if(choice==length) 
     {
-        this->last_item = 0;
-        return -1;
+        _last_item = 0;
+        return MENU_QUIT;
     }
     else
     {
-        this->last_item = choix;
-        return choix;
+        _last_item = choice;
+        return choice;
     }
 }
 
-int Menu::action(int action)
+bool Menu::action(int action)
 {
-    if((action<0)||(action >= this->nombreItem))
+    if((action<0)||(action >= _items.getLength()))
+        return false;
+
+    callback function;
+
+    Item* item = _items.getValue(action);
+    bool r = true;
+    if(item->is_submenu)
     {
-        return 0;
+        int a;
+        do {
+            a = item->content.submenu->choose();
+            r = item->content.submenu->action(a);
+        } while(r);
     }
     else
-    {
-        callback fonction;
-       int i;
-       Item* item = this->premier;
-       for(i=0; i<action; i++)
-       {
-           item = item->suivant;
-       }
-       if(item->fonction)
-       {
-            fonction = item->fonction;
-            fonction();
-        }
-        else if(item->sousMenu)
-        {
-            int a;
-            do {
-                a = item->sousMenu->choose();
-                item->sousMenu->action(a);
-            }while(a>=0);
-        }
-    }
-    return 1;
+        item->content.function();
+
+    return r;
 }
-
-int Menu_newItem(Item* item, callback fonction, const char nom[])
-{
-    item->fonction = fonction;
-    strcpy(item->label, nom);
-    item->suivant=NULL;
-    item->sousMenu=NULL;
-
-    return 1;
-}
-int Menu_newItemSubMenu(Item* item, Menu* subMenu, const char nom[])
-{
-    item->fonction = NULL;
-    item->sousMenu = subMenu;
-    strcpy(item->label, nom);
-    item->suivant = NULL;
-    return 1;
-}
-
-

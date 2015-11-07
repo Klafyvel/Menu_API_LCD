@@ -116,3 +116,17 @@ void clignoteLed()
         v = menu.choose();
     }
 }
+// void listMenu()
+// {
+//     char* items [] = {
+//         "Foo",
+//         "Bar",
+//         "Thing"
+//     };
+//     int v;
+//     Menu menu(items, 3);
+//     do{
+//         v = menu.choose();
+//         lcd.print(v);
+//     } while (v >= 0);
+// }

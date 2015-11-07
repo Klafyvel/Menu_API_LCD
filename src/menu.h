@@ -6,47 +6,46 @@
 
 #include <string.h>
 
-#define MAX_ITEM 10
+#include "Listuino/Listuino/Listuino.h"
+
 #define MAX_LABEL_LONG 20
+
+#define MENU_QUIT -1
 
 typedef void (*callback)(void);
 class Menu;
 
 typedef struct Item
 {
-    Item* suivant;
-    Menu* sousMenu;
-    callback fonction;
+    bool is_submenu;
+    union {
+        Menu* submenu;
+        callback function;
+    } content;
     char label[MAX_LABEL_LONG];
 } Item;
-
-int Menu_newItem(Item* item, callback fonction, const char nom[]);
-int Menu_newItemSubMenu(Item* item, Menu* subMenu, const char nom[]);
-// int Menu_setSubMenu(Item* item, Menu* subMenu);
 
 class Menu
 {
 public:
-    Menu(char titre[], LiquidCrystal* lcd, \
-         char bp_haut, char bp_bas, char bp_ok);
+    Menu(char title[], LiquidCrystal* lcd, \
+         uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok);
     ~Menu();
-    int addSubMenu(Menu* submenu, const char nom[]);
-    int addItem(callback fonction, const char nom[]);
-    int addItem(Item* item);
-    int removeItemByLabel(const char nom[]);
-    int removeItemById(int id);
-    int action(int action);
+    bool addSubMenu(Menu* submenu, const char name[]);
+    bool addItem(callback function, const char name[]);
+    void removeItemByLabel(const char name[]);
+    void removeItemById(int id);
+    bool action(int action);
     int choose();
-    void print(char current);
+    void print(uint8_t current);
 
 private:
-    int nombreItem;
-    Item* premier;
-    char titre[MAX_LABEL_LONG];
-    LiquidCrystal* lcd;
-    char bp_haut;
-    char bp_bas;
-    char bp_ok;
-    int last_item;
+    List <Item*> _items;
+    int _last_item;
+    char _title[MAX_LABEL_LONG];
+    LiquidCrystal* _lcd;
+    uint8_t _pb_up;
+    uint8_t _pb_down;
+    uint8_t _pb_ok;
 };
 #endif
