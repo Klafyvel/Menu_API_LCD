@@ -29,7 +29,7 @@ class Menu
 {
 public:
     Menu(char title[], LiquidCrystal* lcd, \
-         uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok);
+         uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok, bool has_exit=true);
     ~Menu();
     bool addSubMenu(Menu* submenu, const char name[]);
     bool addItem(callback function, const char name[]);
@@ -47,5 +47,6 @@ private:
     uint8_t _pb_up;
     uint8_t _pb_down;
     uint8_t _pb_ok;
+	bool _has_exit;
 };
 #endif

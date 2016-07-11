@@ -19,7 +19,7 @@ const char BP_OK = 8;
 
 const char LED = 9;
 
-Menu myMenu("Menu principal", &lcd, BP_UP, BP_DOWN, BP_OK);
+Menu myMenu("Menu principal", &lcd, BP_UP, BP_DOWN, BP_OK, false);
 Menu mySubMenu("Sous Menu", &lcd, BP_UP, BP_DOWN, BP_OK);
 
 void setup() {

@@ -1,6 +1,6 @@
 #include "menu.h"
 
-Menu::Menu(char title[], LiquidCrystal* lcd, uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok)
+Menu::Menu(char title[], LiquidCrystal* lcd, uint8_t pb_up, uint8_t pb_down, uint8_t pb_ok, bool has_exit)
 {
     _lcd = lcd;
     _lcd->noBlink();
@@ -9,6 +9,7 @@ Menu::Menu(char title[], LiquidCrystal* lcd, uint8_t pb_up, uint8_t pb_down, uin
     _pb_up = pb_up;
     _pb_down = pb_down;
     _last_item = 0;
+	_has_exit = has_exit;
 
     if(strlen(title) <= MAX_LABEL_LONG){strcpy(_title, title);}
 }
@@ -21,7 +22,7 @@ bool Menu::addItem(callback function, const char name[])
     item->is_submenu = false;
     item->content.function = function;
     strcpy(item->label, name);
-    
+
     _items.append(item);
 
     return true;
@@ -50,12 +51,12 @@ void Menu::removeItemByLabel(const char name[])
     }
 }
 
-void Menu::removeItemById(int id) 
+void Menu::removeItemById(int id)
 {
     _items.removeValue(id);
 }
 
-Menu::~Menu() 
+Menu::~Menu()
 {
     _items.~List();
 }
@@ -71,11 +72,11 @@ void Menu::print(uint8_t current)
         Item* item = _items.getValue(current);
         _lcd->print(item->label);
     }
-    else
+    else if (_has_exit)
         _lcd->print("Exit");
 }
 
-int Menu::choose() 
+int Menu::choose()
 {
     int choice = _last_item;
     bool running = true;
@@ -89,11 +90,15 @@ int Menu::choose()
             if(digitalRead(_pb_down)==LOW) { choice ++;event = true;}
             if(digitalRead(_pb_up)==LOW) { choice --;event = true;}
             if(digitalRead(_pb_ok)==LOW) { event = true;running = false;}
-            choice = (choice)%(length+1);
+
+			if (_has_exit)
+	            choice = (choice)%(length+1);
+			else
+				choice = choice%length;
         }
         delay(200);
     }
-    if(choice==length) 
+    if(choice==length)
     {
         _last_item = 0;
         return MENU_QUIT;
